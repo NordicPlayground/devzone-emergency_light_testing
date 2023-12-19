@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <style>
+         body {
+            position: relative;
+            background-color: #00A9CE;;
+        }
+tton styles */
+        .my-button {
+            background-color: #4CAF50;
+            border: none;
+            color: white;
+            padding: 10px 20px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            margin: 4px 2px;
+            cursor: pointer;
+        }
+
+        .box {
+            border: 1px solid #556E8D;
+            padding: 10px;
+            margin-bottom: 10px;
+            display: flex; /* Use flexbox to align items horizontally */
+            flex-direction: column; /* Arrange items vertically */
+        }
+
+        .boxLeft {
+            justify-content: flex-start; /* Align items on the left side of the box */
+        }
+
+        .boxRight {
+            justify-content: flex-end; /* Align items on the right side of the box */
+        }
+                
+        .status-no-response {
+          background-color: orange;
+          color: white;
+          font-weight: bold;
+        }
+
+        .status-passed {
+            background-color: green;
+            color: white;
+            font-weight: bold;
+        }
+
+        .status-failed {
+            background-color: red;
+            color: white;
+            font-weight: bold;
+        }
+
+        .result-pass {
+            background-color: green;
+            color: white;
+            font-weight: bold;
+        }
+
+        .result-fail {
+            background-color: red;
+            color: white;
+            font-weight: bold;
+        }
+
+        .status-waiting,
+        .result-wait {
+            background-color: yellow;
+            color: black;
+            font-weight: bold;
+        }
+
+
+        .my-button {
+            background-color: #4CAF50;
+            border: none;
+            color: white;
+            padding: 10px 20px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            margin: 4px 2px;
+            cursor: pointer;
+        }
+
+        .boxLeft h2,
+        .boxRight h2 {
+            display: flex; /* Use flexbox to align items horizontally */
+            justify-content: space-between; /* Align items on the right side of the box */
+            align-items: center; /* Vertically center the items */
+        }
+
+        button.disabled {
+            opacity: 0.5; /* Reduce the opacity to visually indicate the button is disabled */
+            cursor: not-allowed; /* Change the cursor to indicate the button is not clickable */
+}
+
+    </style>
+</head>
+<body>
+    <h1>Emergency Light Testing</h1>
+    
+    <div class="wrapper">
+        <div class="box boxLeft">
+          <h2>Status Updates<button class="my-button" id="statusButton">Update Status</button></h2>
+          <table id="statusTable">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div class="box boxRight">
+          <h2>Results <button class="my-button" id="resultButton">Start Test</button></h2>
+          
+          <table id="resultTable">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Result</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+          <h4>Test Duration</h4>
+          <input id="durationValue" type="number" min="0" max="65535">
+        </div>
+        <div class="box boxRight">
+            <h3>Update Node List From Server <button class="my-button" id="testButton" type="submit">Update</button></h3>
+            <h3>Retrieve Log Data From Node <button class="my-button" id="testButton2">Retrieve</button></h3>
+            <h4>Select node</h4>
+            <select id="resultDropdown" name="selectedValue"></select>
+            <h3>Calibrate Selected Node &nbsp; &#160; &nbsp; &#160; &nbsp; &#160; &nbsp; &#160;<button class="my-button" id="calibrateButton">Calibrate</button></h3> 
+            
+            <div id="log-container">
+              <!-- Fetched results will be inserted here -->
+            </div>
+          </div>
+    </div>
+      
+    <script>
+document.addEventListener('DOMContentLoaded', function() {
+  var statusButton = document.getElementById('statusButton');
+  var resultButton = document.getElementById('resultButton');
+  var testButton = document.getElementById('testButton');
+  var testButton2 = document.getElementById('testButton2');
+  var lastClickTime = 0;
+  var setDelay = 250; // 0.25 seconds
+
+  var disabledButtons = {};
+
+function disableAllButtons(delay) {
+  var buttons = document.querySelectorAll('button');
+  buttons.forEach(function(button) {
+    var buttonId = button.id;
+    button.disabled = true;
+    button.classList.add('disabled');
+    if (delay) {
+        if (!disabledButtons[buttonId] || disabledButtons[buttonId] < delay){
+            disabledButtons[buttonId] = delay;
+            setTimeout(function() {        
+          enableButtonById(buttonId);
+      }, delay);
+        }
+    }
+  });
+}
+
+function disableButtonById(buttonId, delay) {
+  var button = document.getElementById(buttonId);
+  if (button) {
+    console.log(buttonId);
+    console.log(delay);
+    button.disabled = true;
+    button.classList.add('disabled');
+    if (delay) {
+        if (!disabledButtons[buttonId] || disabledButtons[buttonId] < delay){
+            disabledButtons[buttonId] = delay;
+            setTimeout(function() {        
+          enableButtonById(buttonId);
+      }, delay);
+        }
+    }
+  }
+}
+
+function enableButtonById(buttonId) {
+  var button = document.getElementById(buttonId);
+  if (button) {
+    button.disabled = false;
+    button.classList.remove('disabled');
+    delete disabledButtons[buttonId];
+  }
+}
+  statusButton.addEventListener('click', function() {
+    var currentTime = new Date().getTime();
+    if (currentTime - lastClickTime > setDelay) {
+      lastClickTime = currentTime;
+      disableAllButtons(setDelay);
+      var xhr = new XMLHttpRequest();
+      xhr.open('GET', '/request_status', true);
+      xhr.onreadystatechange = function() {
+        if (xhr.readyState === 4) {
+          if (xhr.status === 200) {
+            var data = JSON.parse(xhr.responseText);
+          } else {
+            console.log("Error in request_status:", xhr.status);
+             
+          }
+        }
+      };
+      xhr.send();
+    }
+  });
+
+  resultButton.addEventListener('click', function() {
+    var currentTime = new Date().getTime();
+    if (currentTime - lastClickTime > setDelay) {
+      lastClickTime = currentTime;
+      var xhr = new XMLHttpRequest();
+      durationValue = document.getElementById("durationValue").value;
+      disableButtonById("resultButton", (durationValue*1000)%65535+1000);
+      disableAllButtons(setDelay);
+      xhr.open('GET', '/request_test?durationValue=' + durationValue, true);
+      xhr.onreadystatechange = function() {
+        if (xhr.readyState === 4) {
+          if (xhr.status === 200) {
+            var data = JSON.parse(xhr.responseText);
+            var resultTable = document.getElementById('resultTable').getElementsByTagName('tbody')[0];
+    
+            // Clear table first
+            while(resultTable.firstChild){
+                resultTable.removeChild(resultTable.firstChild);
+            }
+    
+            // Now add the new rows
+            Object.keys(data).forEach(function(name) {
+                var response = data[name];
+                var row = document.createElement('tr');
+                row.setAttribute('data-name', name);
+    
+                var nameCell = document.createElement('td');
+                nameCell.textContent = name;
+                row.appendChild(nameCell);
+    
+                var responseCell = document.createElement('td');
+                responseCell.textContent = response;
+                if (response === 'No response') {
+                  responseCell.classList.add('status-no-response');
+                }
+                row.appendChild(responseCell);
+    
+                resultTable.appendChild(row);
+            });
+          } else {
+            console.log("Error in request_test:", xhr.status);
+             
+          }
+          }
+      };
+      xhr.send();
+    }
+  });
+
+  testButton.addEventListener('click', function() {
+    updateNodesList()
+  });
+
+  testButton2.addEventListener('click', function() {
+  var currentTime = new Date().getTime();
+  if (currentTime - lastClickTime > setDelay) {
+    lastClickTime = currentTime;
+    disableAllButtons(setDelay);;
+    var selectedValue = document.getElementById('resultDropdown').value;
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', '/test2?selectedValue=' + selectedValue, true);
+    xhr.onreadystatechange = function() {
+      if (xhr.readyState === 4) {
+        if (xhr.status === 200) {
+          var data = JSON.parse(xhr.responseText);
+           
+        } else {
+          console.log("Error in request_test:", xhr.status);
+           
+        }
+      }
+    };
+    xhr.send();
+  }
+});
+
+calibrateButton.addEventListener('click', function() {
+  var currentTime = new Date().getTime();
+  if (currentTime - lastClickTime > setDelay) {
+    lastClickTime = currentTime;
+    disableAllButtons(setDelay);;
+    var selectedValue = document.getElementById('resultDropdown').value;
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', '/calibrate?selectedValue=' + selectedValue, true);
+    xhr.onreadystatechange = function() {
+      if (xhr.readyState === 4) {
+        if (xhr.status === 200) {
+          var data = JSON.parse(xhr.responseText);
+           
+        } else {
+          console.log("Error in request_test:", xhr.status);
+           
+        }
+      }
+    };
+    xhr.send();
+  }
+});
+
+
+function fetchResults() {
+    console.log('fetchResults called');
+    fetch('/get_logged_results')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            for(let node in data) {
+                const table = document.getElementById('table-' + node);
+                
+                if(table) {
+                    updateTable(table, data[node])
+                } else {
+                    createTable(node, data[node]);
+                }
+            }
+
+            const intervalDuration = 1000; 
+            setTimeout(fetchResults, intervalDuration);
+        })
+        .catch((error) => {
+            console.error('Error in fetchResults:', error);
+        });
+}
+// start initial fetch
+console.log('fetchResults comes next');
+fetchResults();
+
+
+function updateTable(table, data) {
+    const tbody = table.getElementsByTagName('tbody')[0];
+    tbody.innerHTML = '';  // Clear old data
+
+    // Insert new data
+    Object.entries(data).forEach(([timestamp, result]) => {
+        const row = document.createElement('tr');
+
+        // Create the timestamp cell
+        let td = document.createElement('td');
+        td.textContent = timestamp;
+        row.appendChild(td);
+  
+
+        // Create the result cell
+        td = document.createElement('td');
+        td.textContent = result;
+        row.appendChild(td);
+
+        tbody.appendChild(row);
+    });
+}
+
+function createTable(node, data) {
+    const container = document.getElementById('log-container');
+
+    // Create the table
+    const table = document.createElement('table');
+    table.id = 'table-' + node;   // Add an id to the table to find it later
+    const thead = document.createElement('thead');
+    const tbody = document.createElement('tbody');
+
+    // Set the table headers
+    const headers = ['Timestamp', 'Result'];
+    const headerRow = document.createElement('tr');
+    headers.forEach(header => {
+        const th = document.createElement('th');
+        th.textContent = header;
+        headerRow.appendChild(th);
+    });
+
+    thead.appendChild(headerRow);
+
+    // Add the data rows
+    Object.entries(data).forEach(([timestamp, result]) => {
+        const row = document.createElement('tr');
+
+        // Create the timestamp cell
+        let td = document.createElement('td');
+        td.textContent = timestamp;
+        row.appendChild(td);
+
+        // Create the result cell
+        td = document.createElement('td');
+        td.textContent = result;
+        row.appendChild(td);
+
+        tbody.appendChild(row);
+    });
+
+    table.appendChild(thead);
+    table.appendChild(tbody);
+
+    // Append the table to our results container
+    // We also add an h2 element for the node name
+    const nodeName = document.createElement('h2');
+    nodeName.textContent = "Node: " + node;
+    container.appendChild(nodeName);
+    container.appendChild(table);
+}
+
+function updateNodesList() {
+  var currentTime = new Date().getTime();
+    if (currentTime - lastClickTime > setDelay) {
+      lastClickTime = currentTime;
+      disableAllButtons(setDelay);;
+      var selectedValue = document.getElementById('resultDropdown').value;
+      var xhr = new XMLHttpRequest();
+      xhr.open('GET', '/test?selectedValue=' + selectedValue, true);
+      xhr.onreadystatechange = function() {
+        if (xhr.readyState === 4) {
+          if (xhr.status === 200) {
+  var data = JSON.parse(xhr.responseText);
+  
+  // Get the dropdown element
+  var dropdown = document.getElementById('resultDropdown');
+
+  // Clear existing options
+  dropdown.innerHTML = "";
+
+  // Loop through each item in the data array
+  data.forEach(function(item) {
+    // Create a new option element
+    var option = document.createElement('option');
+    
+    // Set the value and text of the option
+    option.value = item;
+    option.text = item;
+    
+    // Add the option to the dropdown
+    dropdown.add(option);
+  });
+          } else {
+            console.log("Error in request_test:", xhr.status);
+             
+          }
+        }
+      };
+      xhr.send();
+    }
+}
+
+function sortTableRows(tableId) {
+            var table = document.getElementById(tableId);
+            var rows = Array.from(table.getElementsByTagName('tbody')[0].getElementsByTagName('tr'));
+            rows.sort(function(a, b) {
+                var nameA = a.getElementsByTagName('td')[0].textContent.toUpperCase();
+                var nameB = b.getElementsByTagName('td')[0].textContent.toUpperCase();
+                return (nameA < nameB) ? -1 : (nameA > nameB) ? 1 : 0;
+            });
+            rows.forEach(function(row) {
+                table.getElementsByTagName('tbody')[0].appendChild(row);
+            });
+        }
+
+
+sortTableRows('statusTable');
+sortTableRows('resultTable');
+updateNodesList()
+
+
+        setInterval(function() {
+            var xhr1 = new XMLHttpRequest();
+            xhr1.open('GET', '/get_status_updates', true);
+            xhr1.onreadystatechange = function() {
+            if (xhr1.readyState === 4 && xhr1.status === 200) {
+                var data = JSON.parse(xhr1.responseText);
+                if (data.status) {
+                var statusTable = document.getElementById('statusTable').getElementsByTagName('tbody')[0];
+                sortTableRows('statusTable');
+                Object.keys(data.status).forEach(function(name) {
+                    var response = data.status[name];
+                    var existingRow = document.querySelector('#statusTable tr[data-name="' + name + '"]');
+                    if (!existingRow) {
+                    var row = document.createElement('tr');
+                    row.setAttribute('data-name', name);
+                    var nameCell = document.createElement('td');
+                    nameCell.textContent = name;
+                    row.appendChild(nameCell);
+                    var responseCell = document.createElement('td');
+                    responseCell.textContent = response;
+                    if (response === 'Pass') {
+                        responseCell.classList.add('status-passed');
+                    } else if (response === 'Fail') {
+                        responseCell.classList.add('status-failed');
+                    } else if (response === 'Waiting') {
+                        responseCell.classList.add('status-waiting');
+                        responseCell.textContent = 'waiting';
+                    }
+                    row.appendChild(responseCell);
+                    statusTable.appendChild(row);
+                    } else {
+                    var responseCell = existingRow.querySelector('td:last-child');
+                    responseCell.textContent = response;
+                    responseCell.classList.remove('status-passed', 'status-failed', 'status-waiting');
+                    if (response === 'Pass') {
+                        responseCell.classList.add('status-passed');
+                    } else if (response === 'Fail') {
+                        responseCell.classList.add('status-failed');
+                    } else if (response === 'Waiting') {
+                        responseCell.classList.add('status-waiting');
+                        responseCell.textContent = 'waiting';
+                    }
+                    }
+                });
+                }
+            } else if (xhr1.readyState === 4) {
+                console.log("Error in get_status_updates:", xhr1.status);
+                 
+            }
+            };
+            xhr1.send();
+
+                var xhr2 = new XMLHttpRequest();
+                xhr2.open('GET', '/get_result_updates', true);
+                xhr2.onreadystatechange = function() {
+                    if (xhr2.readyState === 4 && xhr2.status === 200) {
+                        var data = JSON.parse(xhr2.responseText);
+                        if (data.result) {
+                        var resultTable = document.getElementById('resultTable').getElementsByTagName('tbody')[0];
+                        sortTableRows('resultTable');
+                        Object.keys(data.result).forEach(function(name) {
+                            var response = data.result[name];
+                            var existingRow = document.querySelector('#resultTable tr[data-name="' + name + '"]');
+                            if (!existingRow) {
+                            var row = document.createElement('tr');
+                            row.setAttribute('data-name', name);
+                            var nameCell = document.createElement('td');
+                            nameCell.textContent = name;
+                            row.appendChild(nameCell);
+                            var responseCell = document.createElement('td');
+                            responseCellsetDelay.textContent = response;
+                            if (response === 'passed') {
+                                responseCell.classList.add('result-pass');
+                            } else if (response === 'failed') {
+                                responseCell.classList.add('result-fail');
+                            } else if (response === 'waiting') {
+                                responseCell.classList.add('result-wait');
+                                responseCell.textContent = 'waiting';
+                            }
+                            row.appendChild(responseCell);
+                            resultTable.appendChild(row);
+
+                            // Add option to the drop-down list
+                            var option = document.createElement('option');
+                            option.value = name;
+                            option.textContent = name;
+                            dropdown.appendChild(option);
+                            } else {
+                            var responseCell = existingRow.querySelector('td:last-child');
+                            responseCell.textContent = response;
+                            responseCell.classList.remove('result-pass', 'result-fail', 'result-wait');
+                            if (response === 'passed') {
+                                responseCell.classList.add('result-pass');
+                            } else if (response === 'failed') {
+                                responseCell.classList.add('result-fail');
+                            } else if (response === 'waiting') {
+                                responseCell.classList.add('result-wait');
+                                responseCell.textContent = 'waiting';
+                            }
+                            }
+                        });
+                        }
+
+                    } else if (xhr2.readyState === 4) {
+                        console.log("Error in get_result_updates:", xhr2.status);
+                         
+                    }
+                };
+                xhr2.send();
+            }, 1000);
+        });
+    </script>
+</body>
+</html>
