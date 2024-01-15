@@ -186,8 +186,6 @@ int get_result_log(struct bt_mesh_light_monitor *monitor, uint16_t addr)
 
 static int bt_mesh_light_monitor_update_handler(struct bt_mesh_model *model)
 {
-	struct bt_mesh_light_monitor_cli *monitor = model->user_data;
-
 	return 0;
 }
 
@@ -196,9 +194,8 @@ static int bt_mesh_light_monitor_init(struct bt_mesh_model *model)
 	int err;
 	struct bt_mesh_light_monitor *monitor = model->user_data;
 	monitor->model = model;
-	struct bt_mesh_sensor_cli sensor_cli;
-
-	err = bt_mesh_model_extend(model, sensor_cli.model);
+	
+	err = bt_mesh_model_extend(model, monitor->sensor_cli.model);
 
 	net_buf_simple_init_with_data(&monitor->pub_msg, monitor->buf, sizeof(monitor->buf));
 	monitor->pub.msg = &monitor->pub_msg;

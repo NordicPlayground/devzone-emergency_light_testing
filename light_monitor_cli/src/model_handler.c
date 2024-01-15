@@ -276,10 +276,7 @@ static void handle_series_entry(struct bt_mesh_sensor_cli *cli, struct bt_mesh_m
 				const struct bt_mesh_sensor_type *sensor, uint8_t index,
 				uint8_t count, const struct bt_mesh_sensor_series_entry *entry)
 {
-	uint16_t msg;
-	//mesg = entry->value;
-	shell_print(monitor_shell, "status %d %d", ctx->addr, msg);
-
+	shell_print(monitor_shell, "status %d", ctx->addr);
 }
 
 static void handle_sensor_data(struct bt_mesh_sensor_cli *cli, struct bt_mesh_msg_ctx *ctx,
@@ -291,12 +288,9 @@ static void handle_sensor_data(struct bt_mesh_sensor_cli *cli, struct bt_mesh_ms
 	shell_print(monitor_shell, "status %d %d", ctx->addr, msg);
 }
 
-static int handle_calibrate_ok(struct bt_mesh_light_monitor *monitor, struct bt_mesh_msg_ctx *ctx, 
-					uint32_t time_stamp)
+static void handle_calibrate_ok(struct bt_mesh_light_monitor *monitor, struct bt_mesh_msg_ctx *ctx)
 {
 	shell_print(monitor_shell, "calibrate is ok for node %d \n", ctx->addr);
-
-	return 0;
 }
 
 static const struct bt_light_monitor_handlers monitor_handlers = {
@@ -334,7 +328,7 @@ static const struct bt_mesh_comp comp = {
 };
 
 static int cmd_test_start(const struct shell *shell, size_t argc, char *argv[])
-{		
+{
 
 		uint32_t msg_value;
 		uint16_t msg_duration;
@@ -352,14 +346,14 @@ static int cmd_test_start(const struct shell *shell, size_t argc, char *argv[])
 }
 
 static int cmd_get_status(const struct shell *shell, size_t argc, char *argv[])
-{		
+{
 	get_status(&monitor);
 
 	return 0;
 }
 
 static int cmd_get_result_log(const struct shell *shell, size_t argc, char *argv[])
-{	
+{
 	uint32_t msg_value;
 
 	msg_value = strtol(argv[1], NULL, 0);
@@ -369,18 +363,18 @@ static int cmd_get_result_log(const struct shell *shell, size_t argc, char *argv
 }
 
 static int cmd_get_test_ack(const struct shell *shell, size_t argc, char *argv[])
-{		
+{
 	uint32_t msg_value;
 
 
 	msg_value = strtol(argv[1], NULL, 0);
 	get_test_ack(&monitor, msg_value);
-	
+
 	return 0;
 }
 
 static int cmd_nodes_list(const struct shell *shell, size_t argc, char *argv[])
-{		
+{
 
 	for (int i = 0; i < active_nodes.len; i++) {
 		uint16_t nodeValue = active_nodes.nodes[i];
@@ -391,14 +385,14 @@ static int cmd_nodes_list(const struct shell *shell, size_t argc, char *argv[])
 }
 
 static int cmd_portok(const struct shell *shell, size_t argc, char *argv[])
-{	
+{
 	shell_print(monitor_shell,"PORTOK\n");
 
 	return 0;
 }
 
 static int cmd_reset_nodes(const struct shell *shell, size_t argc, char *argv[])
-{	
+{
 	active_nodes.nodes[0] = 0;
 	active_nodes.len = 0;
 
@@ -406,7 +400,7 @@ static int cmd_reset_nodes(const struct shell *shell, size_t argc, char *argv[])
 }
 
 static int cmd_add_first_node(const struct shell *shell, size_t argc, char *argv[])
-{	
+{
 	uint32_t msg_value;
 
 	msg_value = strtol(argv[1], NULL, 0);
@@ -416,7 +410,7 @@ static int cmd_add_first_node(const struct shell *shell, size_t argc, char *argv
 }
 
 static int cmd_add_node(const struct shell *shell, size_t argc, char *argv[])
-{	
+{
 	uint32_t msg_value;
 
 	msg_value = strtol(argv[1], NULL, 0);
@@ -427,7 +421,7 @@ static int cmd_add_node(const struct shell *shell, size_t argc, char *argv[])
 
 
 static int cmd_calibrate_node(const struct shell *shell, size_t argc, char *argv[])
-{	
+{
 	uint32_t msg_value;
 
 	msg_value = strtol(argv[1], NULL, 0);
